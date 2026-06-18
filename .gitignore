@@ -1,0 +1,21 @@
+# Credentials — NEVER commit
+.env
+
+# Data outputs — regenerate by running build
+data/outputs/
+logs/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+*.egg-info/
+dist/
+build/
+
+# Mac OS
+.DS_Store
+
+# IDE
+.Rproj.user/
