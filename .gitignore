@@ -4,6 +4,8 @@
 # Data outputs — regenerate by running build
 data/outputs/
 logs/
+*.xlsx
+*.csv
 
 # Python
 __pycache__/

@@ -20,7 +20,6 @@ Plus a summary row per (se_scenario, premise_scenario, year) with technology="TO
 
 from __future__ import annotations
 
-import os
 import pathlib
 import warnings
 from typing import Any
@@ -33,7 +32,7 @@ except ImportError:
 
 import pandas as pd
 
-from .config import load_config, get_technology_shares
+from .config import load_config, get_technology_shares, get_scenario_pairs, get_premise_db_pattern
 
 LCIA_METHOD_KEYWORDS = ("climate", "global warming potential (GWP100)", "IPCC 2021")
 LCIA_METHOD_EXCLUDES  = ("no LT", ":")
@@ -288,11 +287,16 @@ if __name__ == "__main__":
         check_activity_names(args.bw2_project, args.source_db, args.config)
 
     if args.build:
+        cfg = load_config(args.config)
+        pairs = get_scenario_pairs(cfg)
+        se_scenarios      = [p[0] for p in pairs]
+        premise_scenarios = [p[1] for p in pairs]
+        db_pattern        = get_premise_db_pattern(cfg, override=args.db_pattern)
         build_se_electricity(
-            bw2_project      = args.bw2_project,
-            premise_db_pattern = args.db_pattern,
-            se_scenarios     = ["high_ambition", "moderate", "current_policies"],
-            premise_scenarios= ["SSP2-PkBudg650", "SSP2-PkBudg1000", "SSP2-NPi"],
-            years            = [2025, 2030, 2035, 2040, 2045, 2050],
-            config_path      = args.config,
+            bw2_project        = args.bw2_project,
+            premise_db_pattern = db_pattern,
+            se_scenarios       = se_scenarios,
+            premise_scenarios  = premise_scenarios,
+            years              = [2025, 2030, 2035, 2040, 2045, 2050],
+            config_path        = args.config,
         )

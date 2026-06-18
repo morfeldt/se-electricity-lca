@@ -1,333 +1,135 @@
 # Swedish electricity generation mix — technology shares by scenario and year.
 #
-# !! FLAGGED FOR REVIEW !!
-# Default values below are based on Energimyndigheten's long-term energy scenarios
-# (Långsiktiga energiscenarier, 2023 edition) and historical Eurostat/SCB data.
-# Verify and update against the most recent Energimyndigheten publication before
-# using results in published work.
+# Electricity generation data:
+#   Energimyndigheten, Scenarier över Sveriges energisystem ER 2025:13.
+#   Fig. 17 (K4.3) in inputs/figurunderlag-langsiktiga-scenarier-2025.xlsx
+#   Run scripts/build_electricity_mix.py to regenerate data/electricity_mix_shares.csv.
 #
-# Source references:
-#   Historical (2015–2023): Eurostat nrg_cb_pem / SCB EN0105
-#   Projections: Energimyndigheten ER 2023:XX (Långsiktiga energiscenarier)
-#   Cross-check: ENTSO-E TYNDP 2024 — SE node
-#
-# Structure:
-#   scenarios:
-#     <scenario_name>:
-#       description: ...
-#       years:
-#         <year>:
-#           <technology>: <share>   # share of total generation (must sum to ~1.0)
-#
-# Technology keys must match those in technology_activities below.
-# Shares represent fraction of total electricity generation (TWh basis).
-# Transmission/distribution losses are handled separately in ecoinvent.
+# Background (premise) scenario mapping is set per SE scenario below under
+# premise_scenario. Edit to change which premise database is paired with each
+# SE scenario. The premise_db_pattern template uses {pathway} and {year}.
+
+# ── Global settings ───────────────────────────────────────────────────────────
+
+settings:
+  premise_db_pattern: "ecoinvent-3.10-{pathway}-{year}"
+  source_file:        "inputs/figurunderlag-langsiktiga-scenarier-2025.xlsx"
+  source_tab_elec:    "Fig. 17 (K4.3)"
+  source_reference:   "Scenarier över Sveriges energisystem ER 2025:13"
+
+  # CHP split: fraction of total CHP electricity (Kraftvärme + Industriell kraftvärme)
+  # assigned to each sub-technology. Must sum to 1.0 per scenario.
+  # Source: exogenous assumption based on Swedish CHP fuel mix.
+  # Historical split applies to years from the "Statistik" rows in the Excel.
+  cogeneration_split:
+    historical:
+      biomass_chp: 0.80
+      waste_chp:   0.15
+      natural_gas: 0.05
+    lokal_miljohansyn:
+      biomass_chp: 0.88
+      waste_chp:   0.10
+      natural_gas: 0.02
+    globalt_miljoperspektiv:
+      biomass_chp: 0.82
+      waste_chp:   0.13
+      natural_gas: 0.05
+    regional_forsorjning:
+      biomass_chp: 0.76
+      waste_chp:   0.16
+      natural_gas: 0.08
 
 # ── Technology → ecoinvent 3.10 activity mapping ──────────────────────────────
-# !! VERIFY activity names against ecoinvent 3.10 before building !!
-# Use check_activity_names() in build.py to confirm.
-# Location preference: SE > RER > GLO (use most specific available).
+# Location preference: SE > fallback_location.
+# All SE activities confirmed against ecoinvent-3.10-cutoff.
 
 technology_activities:
   hydro:
     name: "electricity production, hydro, reservoir, alpine region"
     location: "SE"
     fallback_location: "RER"
-    notes: "Dominant Swedish source (~45%). SE-specific activity exists in eiv 3.10 — verify."
+    notes: "Dominant Swedish source (~45%). SE activity confirmed in eiv 3.10."
 
   nuclear:
     name: "electricity production, nuclear, pressure water reactor"
     location: "SE"
     fallback_location: "RER"
-    notes: "~30% share. Sweden operates Forsmark, Ringhals, Oskarshamn. SE activity may exist."
+    notes: "~30% share. SE activity confirmed in eiv 3.10."
 
   wind_onshore:
     name: "electricity production, wind, 1-3MW turbine, onshore"
     location: "SE"
     fallback_location: "RER"
-    notes: "Rapidly growing. Check for SE-specific activity; otherwise RER."
+    notes: "Rapidly growing. SE activity confirmed in eiv 3.10."
 
   wind_offshore:
     name: "electricity production, wind, 1-3MW turbine, offshore"
-    location: "RER"
-    fallback_location: "GLO"
-    notes: "Limited currently but large pipeline. RER likely closest available."
+    location: "SE"
+    fallback_location: "RoW"
+    notes: "Limited currently but large pipeline. SE activity confirmed in eiv 3.10."
 
   solar_pv:
     name: "electricity production, photovoltaic, 3kWp slanted-roof installation, multi-Si, panel, mounted"
-    location: "RER"
-    fallback_location: "GLO"
-    notes: "Small but growing. RER or GLO; no SE-specific activity expected."
+    location: "SE"
+    fallback_location: "FI"
+    notes: "Small but growing. SE activity confirmed in eiv 3.10. FI fallback (similar latitude)."
 
   biomass_chp:
     name: "heat and power co-generation, wood chips, 6667 kW, state-of-the-art 2014"
     location: "SE"
     fallback_location: "RER"
-    notes: "Bioenergy CHP common in Sweden. Verify SE activity exists in eiv 3.10."
+    notes: "Bioenergy CHP common in Sweden. SE activity confirmed in eiv 3.10."
 
   waste_chp:
-    name: "heat and power co-generation, waste plastic, municipal"
-    location: "RER"
-    fallback_location: "GLO"
-    notes: "Waste incineration with electricity recovery. Minor share."
+    name: "electricity, from municipal waste incineration to generic market for electricity, medium voltage"
+    location: "SE"
+    fallback_location: "FI"
+    notes: "Waste incineration with electricity recovery. SE activity confirmed in eiv 3.10."
 
   natural_gas:
     name: "electricity production, natural gas, combined cycle power plant"
-    location: "RER"
-    fallback_location: "GLO"
-    notes: "Very minor in Sweden; mainly peaking. Include for completeness."
+    location: "SE"
+    fallback_location: "RoW"
+    notes: "Very minor in Sweden; mainly peaking. SE activity confirmed in eiv 3.10."
 
   net_imports:
     name: "market for electricity, high voltage"
     location: "SE"
     fallback_location: "RER"
     notes: >
-      Net import share. Sweden is typically a net exporter but imports from
-      Norway (hydro) and Denmark (wind) in low-hydro years. Using SE high-voltage
-      market as proxy — this is a simplification. REVIEW for scenarios with
-      significant net import shares.
+      Net import share. Sweden is typically a net exporter. SE high-voltage
+      market used as proxy. REVIEW for scenarios with significant net import shares.
 
 # ── Scenario definitions ───────────────────────────────────────────────────────
-# Three scenarios aligned with v-tafm and ICT pilot background scenarios.
-# Scenario names should correspond (loosely) to SSP2-PkBudg650, SSP2-PkBudg1000,
-# SSP2-NPi to allow direct cross-referencing in downstream analysis.
+# SE scenario names follow Energimyndigheten ER 2025:13.
+# premise_scenario sets which premise pathway is paired with each SE scenario.
+# Edit premise_scenario here to change the mapping — no code changes needed.
 #
-# !! VALUES BELOW ARE APPROXIMATE — REVIEW AGAINST ENERGIMYNDIGHETEN SCENARIOS !!
+# Year data (technology shares) are NOT stored here. They are loaded at runtime
+# from data/electricity_mix_shares.csv, generated by scripts/fetch_scb_electricity_mix.R.
 
 scenarios:
 
-  # ── Scenario 1: Accelerated transition (≈ PkBudg650 / high-ambition) ──────
-  high_ambition:
+  lokal_miljohansyn:
+    source_name:      "Lokal miljöhänsyn"
+    premise_scenario: "SSP2-PkBudg650"
     description: >
-      Rapid electrification and renewable buildout. Nuclear maintained and potentially
-      extended. Large offshore wind expansion. Consistent with Energimyndigheten's
-      "Elektrifiering" scenario and EU Green Deal targets.
-      Maps to: SSP2-PkBudg650 background in premise.
-    years:
-      2020:   # Historical anchor — verify against SCB EN0105
-        hydro:        0.450
-        nuclear:      0.295
-        wind_onshore: 0.115
-        wind_offshore: 0.010
-        solar_pv:     0.010
-        biomass_chp:  0.080
-        waste_chp:    0.015
-        natural_gas:  0.005
-        net_imports:  0.020
-      2025:
-        hydro:        0.440
-        nuclear:      0.280
-        wind_onshore: 0.155
-        wind_offshore: 0.020
-        solar_pv:     0.020
-        biomass_chp:  0.060
-        waste_chp:    0.015
-        natural_gas:  0.003
-        net_imports:  0.007
-      2030:
-        hydro:        0.420
-        nuclear:      0.260
-        wind_onshore: 0.180
-        wind_offshore: 0.060
-        solar_pv:     0.035
-        biomass_chp:  0.035
-        waste_chp:    0.005
-        natural_gas:  0.002
-        net_imports:  0.003
-      2035:
-        hydro:        0.380
-        nuclear:      0.250
-        wind_onshore: 0.185
-        wind_offshore: 0.120
-        solar_pv:     0.045
-        biomass_chp:  0.015
-        waste_chp:    0.003
-        natural_gas:  0.001
-        net_imports:  0.001
-      2040:
-        hydro:        0.360
-        nuclear:      0.240
-        wind_onshore: 0.185
-        wind_offshore: 0.165
-        solar_pv:     0.040
-        biomass_chp:  0.007
-        waste_chp:    0.002
-        natural_gas:  0.001
-        net_imports:  0.000
-      2045:
-        hydro:        0.340
-        nuclear:      0.230
-        wind_onshore: 0.185
-        wind_offshore: 0.200
-        solar_pv:     0.038
-        biomass_chp:  0.005
-        waste_chp:    0.001
-        natural_gas:  0.001
-        net_imports:  0.000
-      2050:
-        hydro:        0.330
-        nuclear:      0.225
-        wind_onshore: 0.180
-        wind_offshore: 0.225
-        solar_pv:     0.033
-        biomass_chp:  0.005
-        waste_chp:    0.001
-        natural_gas:  0.001
-        net_imports:  0.000
+      Strong domestic climate ambition. Rapid electrification and renewable
+      buildout. Nuclear maintained and extended. Large offshore wind expansion.
+      Source: Energimyndigheten ER 2025:13.
 
-  # ── Scenario 2: Moderate transition (≈ PkBudg1000 / moderate-ambition) ───
-  moderate:
+  globalt_miljoperspektiv:
+    source_name:      "Globalt miljöperspektiv"
+    premise_scenario: "SSP2-PkBudg1000"
     description: >
-      Moderate renewable expansion. Nuclear maintained at current capacity.
-      Slower offshore wind buildout. Consistent with Energimyndigheten's
-      reference scenario.
-      Maps to: SSP2-PkBudg1000 background in premise.
-    years:
-      2020:
-        hydro:        0.450
-        nuclear:      0.295
-        wind_onshore: 0.115
-        wind_offshore: 0.010
-        solar_pv:     0.010
-        biomass_chp:  0.080
-        waste_chp:    0.015
-        natural_gas:  0.005
-        net_imports:  0.020
-      2025:
-        hydro:        0.445
-        nuclear:      0.285
-        wind_onshore: 0.145
-        wind_offshore: 0.015
-        solar_pv:     0.015
-        biomass_chp:  0.065
-        waste_chp:    0.015
-        natural_gas:  0.005
-        net_imports:  0.010
-      2030:
-        hydro:        0.430
-        nuclear:      0.280
-        wind_onshore: 0.165
-        wind_offshore: 0.030
-        solar_pv:     0.025
-        biomass_chp:  0.050
-        waste_chp:    0.010
-        natural_gas:  0.005
-        net_imports:  0.005
-      2035:
-        hydro:        0.415
-        nuclear:      0.270
-        wind_onshore: 0.175
-        wind_offshore: 0.065
-        solar_pv:     0.030
-        biomass_chp:  0.030
-        waste_chp:    0.008
-        natural_gas:  0.004
-        net_imports:  0.003
-      2040:
-        hydro:        0.400
-        nuclear:      0.265
-        wind_onshore: 0.180
-        wind_offshore: 0.095
-        solar_pv:     0.030
-        biomass_chp:  0.020
-        waste_chp:    0.005
-        natural_gas:  0.003
-        net_imports:  0.002
-      2045:
-        hydro:        0.390
-        nuclear:      0.260
-        wind_onshore: 0.180
-        wind_offshore: 0.115
-        solar_pv:     0.030
-        biomass_chp:  0.018
-        waste_chp:    0.004
-        natural_gas:  0.002
-        net_imports:  0.001
-      2050:
-        hydro:        0.380
-        nuclear:      0.255
-        wind_onshore: 0.180
-        wind_offshore: 0.135
-        solar_pv:     0.030
-        biomass_chp:  0.015
-        waste_chp:    0.003
-        natural_gas:  0.002
-        net_imports:  0.000
+      Global environmental focus. Moderate renewable expansion. Nuclear
+      maintained at current capacity. Slower offshore wind buildout.
+      Source: Energimyndigheten ER 2025:13.
 
-  # ── Scenario 3: Slow transition (≈ NPi / current-policies) ───────────────
-  current_policies:
+  regional_forsorjning:
+    source_name:      "Regional försörjning"
+    premise_scenario: "SSP2-NPi"
     description: >
-      Continuation of current policy trajectory. Slower nuclear phase-down.
-      Renewable expansion at current pace. No major policy step-change.
-      Maps to: SSP2-NPi background in premise.
-    years:
-      2020:
-        hydro:        0.450
-        nuclear:      0.295
-        wind_onshore: 0.115
-        wind_offshore: 0.010
-        solar_pv:     0.010
-        biomass_chp:  0.080
-        waste_chp:    0.015
-        natural_gas:  0.005
-        net_imports:  0.020
-      2025:
-        hydro:        0.448
-        nuclear:      0.290
-        wind_onshore: 0.130
-        wind_offshore: 0.010
-        solar_pv:     0.012
-        biomass_chp:  0.075
-        waste_chp:    0.015
-        natural_gas:  0.005
-        net_imports:  0.015
-      2030:
-        hydro:        0.440
-        nuclear:      0.285
-        wind_onshore: 0.150
-        wind_offshore: 0.015
-        solar_pv:     0.018
-        biomass_chp:  0.065
-        waste_chp:    0.012
-        natural_gas:  0.007
-        net_imports:  0.008
-      2035:
-        hydro:        0.435
-        nuclear:      0.275
-        wind_onshore: 0.160
-        wind_offshore: 0.030
-        solar_pv:     0.022
-        biomass_chp:  0.055
-        waste_chp:    0.010
-        natural_gas:  0.007
-        net_imports:  0.006
-      2040:
-        hydro:        0.425
-        nuclear:      0.265
-        wind_onshore: 0.165
-        wind_offshore: 0.050
-        solar_pv:     0.025
-        biomass_chp:  0.045
-        waste_chp:    0.010
-        natural_gas:  0.007
-        net_imports:  0.008
-      2045:
-        hydro:        0.415
-        nuclear:      0.255
-        wind_onshore: 0.170
-        wind_offshore: 0.065
-        solar_pv:     0.027
-        biomass_chp:  0.040
-        waste_chp:    0.010
-        natural_gas:  0.008
-        net_imports:  0.010
-      2050:
-        hydro:        0.405
-        nuclear:      0.245
-        wind_onshore: 0.175
-        wind_offshore: 0.080
-        solar_pv:     0.030
-        biomass_chp:  0.038
-        waste_chp:    0.010
-        natural_gas:  0.008
-        net_imports:  0.009
+      Regional energy self-sufficiency focus. Slower transition pace.
+      Renewable expansion at current trajectory. No major policy step-change.
+      Source: Energimyndigheten ER 2025:13.

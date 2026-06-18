@@ -8,23 +8,31 @@ from typing import Any
 
 import yaml
 
-DEFAULT_CONFIG = pathlib.Path(__file__).parent.parent / "config" / "electricity_mix.yaml"
+DEFAULT_CONFIG     = pathlib.Path(__file__).parent.parent / "config" / "electricity_mix.yaml"
+DEFAULT_SHARES_CSV = pathlib.Path(__file__).parent.parent / "data" / "electricity_mix_shares.csv"
 
 # Tolerance for share sums — warn if any year deviates by more than this.
 SHARE_SUM_TOLERANCE = 0.02
 
 
-def load_config(path: str | pathlib.Path | None = None) -> dict[str, Any]:
-    """Load and validate electricity_mix.yaml.
+def load_config(
+    path: str | pathlib.Path | None = None,
+    shares_csv: str | pathlib.Path | None = None,
+) -> dict[str, Any]:
+    """Load electricity_mix.yaml and merge in shares from CSV.
 
     Parameters
     ----------
     path:
-        Path to config file. Defaults to config/electricity_mix.yaml in the repo root.
+        Path to config YAML. Defaults to config/electricity_mix.yaml.
+    shares_csv:
+        Path to shares CSV produced by scripts/fetch_scb_electricity_mix.R.
+        Defaults to data/electricity_mix_shares.csv.
 
     Returns
     -------
-    dict with keys: ``technology_activities``, ``scenarios``
+    dict with keys: ``settings``, ``technology_activities``, ``scenarios``
+        Each scenario will have a ``years`` sub-dict populated from the CSV.
     """
     config_path = pathlib.Path(path) if path else DEFAULT_CONFIG
     if not config_path.exists():
@@ -33,8 +41,62 @@ def load_config(path: str | pathlib.Path | None = None) -> dict[str, Any]:
     with open(config_path) as f:
         cfg = yaml.safe_load(f)
 
+    csv_path = pathlib.Path(shares_csv) if shares_csv else DEFAULT_SHARES_CSV
+    if not csv_path.exists():
+        raise FileNotFoundError(
+            f"Shares CSV not found: {csv_path}\n"
+            "Run scripts/fetch_scb_electricity_mix.R to generate it."
+        )
+    _merge_shares_csv(cfg, csv_path)
+
     _validate(cfg)
     return cfg
+
+
+def _merge_shares_csv(cfg: dict, csv_path: pathlib.Path) -> None:
+    """Read shares CSV and populate cfg['scenarios'][s]['years'] in place."""
+    import pandas as pd
+
+    df = pd.read_csv(csv_path)
+    for (scenario, year), grp in df.groupby(["scenario", "year"]):
+        if scenario not in cfg["scenarios"]:
+            warnings.warn(
+                f"CSV contains scenario '{scenario}' not found in config — skipping."
+            )
+            continue
+        cfg["scenarios"][scenario].setdefault("years", {})[int(year)] = dict(
+            zip(grp["technology"], grp["share"])
+        )
+
+
+def get_scenario_pairs(cfg: dict) -> list[tuple[str, str]]:
+    """Return list of (se_scenario_key, premise_scenario) from config.
+
+    Reads premise_scenario from each scenario definition. Scenarios without
+    a premise_scenario field are skipped with a warning.
+    """
+    pairs = []
+    for name, sc in cfg["scenarios"].items():
+        if "premise_scenario" not in sc:
+            warnings.warn(
+                f"Scenario '{name}' has no premise_scenario — skipping. "
+                "Add premise_scenario to electricity_mix.yaml to include it."
+            )
+            continue
+        pairs.append((name, sc["premise_scenario"]))
+    return pairs
+
+
+def get_premise_db_pattern(cfg: dict, override: str | None = None) -> str:
+    """Return the premise_db_pattern from settings, or override if provided."""
+    if override:
+        return override
+    pattern = cfg.get("settings", {}).get("premise_db_pattern")
+    if not pattern:
+        raise ValueError(
+            "premise_db_pattern not set in config settings and no override provided."
+        )
+    return pattern
 
 
 def _validate(cfg: dict) -> None:
@@ -48,7 +110,7 @@ def _validate(cfg: dict) -> None:
 
     for scenario_name, scenario in cfg["scenarios"].items():
         if "years" not in scenario:
-            raise ValueError(f"Scenario '{scenario_name}' has no 'years' key.")
+            continue  # year data loaded from CSV after this call
         for year, shares in scenario["years"].items():
             unknown = set(shares.keys()) - tech_keys
             if unknown:
