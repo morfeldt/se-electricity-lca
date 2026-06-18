@@ -15,12 +15,39 @@ settings:
   premise_db_pattern: "ecoinvent-3.10-{pathway}-{year}"
   source_file:        "inputs/figurunderlag-langsiktiga-scenarier-2025.xlsx"
   source_tab_elec:    "Fig. 17 (K4.3)"
+  source_tab_bfg:     "Fig. 60 (A4.1)"
   source_reference:   "Scenarier över Sveriges energisystem ER 2025:13"
 
-  # CHP split: fraction of total CHP electricity (Kraftvärme + Industriell kraftvärme)
-  # assigned to each sub-technology. Must sum to 1.0 per scenario.
-  # Source: exogenous assumption based on Swedish CHP fuel mix.
-  # Historical split applies to years from the "Statistik" rows in the Excel.
+  # Output voltage level. Controls which ecoinvent market activity is used for
+  # benchmarking, and which voltage chain is traversed to derive T&D loss factors
+  # and grid infrastructure GWP. Options: "high", "medium", "low".
+  # Use "low" for household/residential electricity consumption.
+  voltage_level: "low"
+
+  # Electrical efficiency for blast furnace gas in industrial backpressure CHP.
+  # Converts fuel input (TWh, from Fig. 60 "Ind mottryck Hyttgaser") to electricity.
+  # Calibrated so 2020 base-year electricity matches ecoinvent's SE HV market share
+  # (1.06 TWh fuel × 0.26 ≈ 0.275 TWh electricity ≈ 0.17% of ~163 TWh total).
+  blast_furnace_gas_electrical_efficiency: 0.26
+
+  # Hydro split: fraction of total Vattenkraft assigned to each sub-type.
+  # Must sum to 1.0. Energimyndigheten reports hydro as a single "Vattenkraft"
+  # column with no run-of-river / reservoir breakdown.
+  # Ecoinvent's SE HV market implies ~80% run-of-river / 20% reservoir non-alpine,
+  # but Sweden's actual system is more reservoir-heavy (regulated mountain systems
+  # in Norrland dominate). The GWP difference is large: run-of-river ~0.004 vs
+  # reservoir ~0.051 kgCO2eq/kWh (reservoir includes methane from decomposition).
+  # Adjust this split to reflect the best available Swedish hydro statistics.
+  hydro_split:
+    run_of_river: 0.80
+    reservoir:    0.20
+
+  # District CHP split (Kraftvärme only — Industriell kraftvärme is handled separately):
+  # fraction of Kraftvärme electricity assigned to each sub-technology. Must sum to 1.0.
+  # Industriell kraftvärme (minus blast furnace gas) is mapped 100% to
+  # biomass_chp_industrial, representing pulp/paper residue combustion (bark, black
+  # liquor, process gases). Source: exogenous assumption based on Swedish district CHP
+  # fuel mix. Historical split applies to "Statistik" years in the Excel.
   cogeneration_split:
     historical:
       biomass_chp: 0.80
@@ -44,11 +71,24 @@ settings:
 # All SE activities confirmed against ecoinvent-3.10-cutoff.
 
 technology_activities:
-  hydro:
-    name: "electricity production, hydro, reservoir, alpine region"
+  hydro_ror:
+    name: "electricity production, hydro, run-of-river"
     location: "SE"
     fallback_location: "RER"
-    notes: "Dominant Swedish source (~45%). SE activity confirmed in eiv 3.10."
+    notes: >
+      Run-of-river share of Vattenkraft, set by hydro_split.run_of_river.
+      GWP ~0.004 kgCO2eq/kWh. SE activity confirmed in ecoinvent 3.10.
+
+  hydro_reservoir:
+    name: "electricity production, hydro, reservoir, non-alpine region"
+    location: "SE"
+    fallback_location: "RER"
+    notes: >
+      Reservoir (regulated) share of Vattenkraft, set by hydro_split.reservoir.
+      GWP ~0.051 kgCO2eq/kWh — much higher than run-of-river due to methane
+      emissions from decomposing organic matter in reservoirs. The 'non-alpine
+      region' variant is the correct SE activity; no 'alpine region' exists for SE
+      in ecoinvent 3.10. SE activity confirmed in ecoinvent 3.10.
 
   nuclear:
     name: "electricity production, nuclear, pressure water reactor"
@@ -74,11 +114,29 @@ technology_activities:
     fallback_location: "FI"
     notes: "Small but growing. SE activity confirmed in eiv 3.10. FI fallback (similar latitude)."
 
+  biomass_chp_industrial:
+    name: "heat and power co-generation, wood chips, 6667 kW, state-of-the-art 2014"
+    location: "SE"
+    fallback_location: "RER"
+    notes: >
+      Industriell kraftvärme — pulp/paper industry residue CHP (bark, black liquor,
+      process gases). Receives 100% of industrial CHP electricity after blast furnace
+      gas is carved out. No dedicated ecoinvent activity exists for SE pulp/paper
+      industrial CHP; wood chips 6667 kW is used as the best available proxy.
+      Scale is understated (real plants are 10–100× larger) but the dominant GWP
+      source is biomass supply chain and plant construction, not combustion, so the
+      proxy is acceptable. Revisit if a large-scale SE industrial biomass activity
+      becomes available in future ecoinvent versions.
+
   biomass_chp:
     name: "heat and power co-generation, wood chips, 6667 kW, state-of-the-art 2014"
     location: "SE"
     fallback_location: "RER"
-    notes: "Bioenergy CHP common in Sweden. SE activity confirmed in eiv 3.10."
+    notes: >
+      Kraftvärme (district CHP) biomass fraction. Share set by
+      cogeneration_split.*.biomass_chp. Same ecoinvent activity as
+      biomass_chp_industrial; kept as a separate key so district and industrial
+      CHP contributions remain distinguishable in the output.
 
   waste_chp:
     name: "electricity, from municipal waste incineration to generic market for electricity, medium voltage"
@@ -100,13 +158,38 @@ technology_activities:
       Net import share. Sweden is typically a net exporter. SE high-voltage
       market used as proxy. REVIEW for scenarios with significant net import shares.
 
+  blast_furnace_gas:
+    name: "treatment of blast furnace gas, in power plant"
+    location: "SE"
+    fallback_location: "RoW"
+    notes: >
+      Industrial backpressure CHP at Swedish steel plants (primarily SSAB). Electricity
+      share derived from Fig. 60 (A4.1) fuel-input data multiplied by
+      blast_furnace_gas_electrical_efficiency (default 0.26). Carved out of
+      'Industriell kraftvärme' before the biomass/waste/gas CHP split is applied.
+      GWP ~3.26 kgCO2eq/kWh — the highest of any SE source. Phased out in
+      Lokal/Globalt by 2030; retained at reduced levels in Regional försörjning.
+
+  grid_infrastructure:
+    name: "(derived from voltage market exchange structure)"
+    location: "SE"
+    fallback_location: null
+    notes: >
+      Grid infrastructure overhead — cables, transformers, substations, SF6. Not looked
+      up directly; resolved at runtime by traversing the full voltage chain
+      (HV→MV→LV for voltage_level: "low") in the base ecoinvent database and running
+      LCA on each non-electricity exchange. Each level's infrastructure GWP is scaled
+      to the target-voltage consumption basis by multiplying through the downstream
+      electricity-amount products. Applied as an addend to the TOTAL (not
+      generation-share weighted). Always uses the base ecoinvent database, not premise.
+
 # ── Scenario definitions ───────────────────────────────────────────────────────
 # SE scenario names follow Energimyndigheten ER 2025:13.
 # premise_scenario sets which premise pathway is paired with each SE scenario.
 # Edit premise_scenario here to change the mapping — no code changes needed.
 #
 # Year data (technology shares) are NOT stored here. They are loaded at runtime
-# from data/electricity_mix_shares.csv, generated by scripts/fetch_scb_electricity_mix.R.
+# from data/electricity_mix_shares.csv, generated by scripts/build_electricity_mix.py.
 
 scenarios:
 

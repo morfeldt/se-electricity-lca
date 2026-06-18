@@ -11,7 +11,6 @@ import yaml
 DEFAULT_CONFIG     = pathlib.Path(__file__).parent.parent / "config" / "electricity_mix.yaml"
 DEFAULT_SHARES_CSV = pathlib.Path(__file__).parent.parent / "data" / "electricity_mix_shares.csv"
 
-# Tolerance for share sums — warn if any year deviates by more than this.
 SHARE_SUM_TOLERANCE = 0.02
 
 
@@ -124,6 +123,15 @@ def _validate(cfg: dict) -> None:
                     f"Scenario '{scenario_name}' year {year}: shares sum to {total:.4f}, "
                     f"expected 1.0 ± {SHARE_SUM_TOLERANCE}. Review config."
                 )
+
+
+
+def get_voltage_level(cfg: dict) -> str:
+    """Return the configured output voltage level ('high', 'medium', or 'low')."""
+    level = cfg.get("settings", {}).get("voltage_level", "low")
+    if level not in ("high", "medium", "low"):
+        raise ValueError(f"Invalid voltage_level '{level}' in config. Must be 'high', 'medium', or 'low'.")
+    return level
 
 
 def get_technology_shares(
