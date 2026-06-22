@@ -30,6 +30,13 @@ settings:
   # (1.06 TWh fuel × 0.26 ≈ 0.275 TWh electricity ≈ 0.17% of ~163 TWh total).
   blast_furnace_gas_electrical_efficiency: 0.26
 
+  # Nuclear fleet split between reactor types. Must sum to 1.0.
+  # Swedish fleet (2024): Forsmark 1,2,3 + Oskarshamn 3 = BWR; Ringhals 3,4 = PWR.
+  # GWP: PWR ~0.00716, BWR ~0.00771 kgCO2eq/kWh (both SE activities in ecoinvent 3.10).
+  nuclear_split:
+    pwr: 0.30
+    bwr: 0.70
+
   # Hydro split: fraction of total Vattenkraft assigned to each sub-type.
   # Must sum to 1.0. Energimyndigheten reports hydro as a single "Vattenkraft"
   # column with no run-of-river / reservoir breakdown.
@@ -48,6 +55,20 @@ settings:
   # biomass_chp_industrial, representing pulp/paper residue combustion (bark, black
   # liquor, process gases). Source: exogenous assumption based on Swedish district CHP
   # fuel mix. Historical split applies to "Statistik" years in the Excel.
+  # Fraction of gross fossil combustion GHG from waste incineration allocated to electricity (0–1).
+  # 0.0 (default): ecoinvent system-expansion approach — all burden to the waste treatment
+  # functional unit; electricity by-product GWP = 0 (ecoinvent default for SE).
+  # If > 0: the direct fossil CO2 from the waste incineration biosphere inventory (~0.476 kg/kg
+  # MSW for SE in ecoinvent 3.10) is multiplied by this fraction and divided by
+  # waste_chp_electricity_yield_kwh_per_kg to yield the electricity GWP.
+  # Material recovery credits (recovered metals, avoided landfill) stay with the waste
+  # treatment functional unit and are NOT allocated to electricity.
+  # Example: burden_fraction=0.10, yield=0.18 → GWP ≈ 0.476×0.10/0.18 ≈ 0.26 kgCO2eq/kWh
+  waste_chp_electricity_burden_fraction: 0
+  # kWh of electricity produced per kg MSW incinerated (Swedish MSWI average ~0.18 kWh/kg).
+  # Used only when waste_chp_electricity_burden_fraction > 0.
+  waste_chp_electricity_yield_kwh_per_kg: 0.18
+
   cogeneration_split:
     historical:
       biomass_chp: 0.80
@@ -90,11 +111,21 @@ technology_activities:
       region' variant is the correct SE activity; no 'alpine region' exists for SE
       in ecoinvent 3.10. SE activity confirmed in ecoinvent 3.10.
 
-  nuclear:
+  nuclear_pwr:
     name: "electricity production, nuclear, pressure water reactor"
     location: "SE"
     fallback_location: "RER"
-    notes: "~30% share. SE activity confirmed in eiv 3.10."
+    notes: >
+      PWR share of nuclear, set by nuclear_split.pwr. Ringhals 3, 4.
+      GWP ~0.00716 kgCO2eq/kWh. SE activity confirmed in ecoinvent 3.10.
+
+  nuclear_bwr:
+    name: "electricity production, nuclear, boiling water reactor"
+    location: "SE"
+    fallback_location: "RER"
+    notes: >
+      BWR share of nuclear, set by nuclear_split.bwr. Forsmark 1, 2, 3; Oskarshamn 3.
+      GWP ~0.00771 kgCO2eq/kWh. SE activity confirmed in ecoinvent 3.10.
 
   wind_onshore:
     name: "electricity production, wind, 1-3MW turbine, onshore"
@@ -142,7 +173,11 @@ technology_activities:
     name: "electricity, from municipal waste incineration to generic market for electricity, medium voltage"
     location: "SE"
     fallback_location: "FI"
-    notes: "Waste incineration with electricity recovery. SE activity confirmed in eiv 3.10."
+    notes: >
+      Waste incineration with electricity recovery. SE activity confirmed in ecoinvent 3.10.
+      Default GWP = 0 (ecoinvent system expansion — all burden to waste treatment functional
+      unit). Use waste_chp_electricity_burden_fraction > 0 in settings to allocate a fraction
+      of the gross fossil combustion GHG (~0.476 kgCO2/kg MSW) to electricity instead.
 
   natural_gas:
     name: "electricity production, natural gas, combined cycle power plant"

@@ -63,9 +63,10 @@ COL_MAP = {
 with open(CONFIG) as f:
     cfg = yaml.safe_load(f)
 
-chp_split   = cfg["settings"]["cogeneration_split"]
-BFG_EFF     = cfg["settings"].get("blast_furnace_gas_electrical_efficiency", 0.26)
-hydro_split = cfg["settings"].get("hydro_split", {"run_of_river": 0.80, "reservoir": 0.20})
+chp_split     = cfg["settings"]["cogeneration_split"]
+BFG_EFF       = cfg["settings"].get("blast_furnace_gas_electrical_efficiency", 0.26)
+hydro_split   = cfg["settings"].get("hydro_split", {"run_of_river": 0.80, "reservoir": 0.20})
+nuclear_split = cfg["settings"].get("nuclear_split", {"pwr": 0.30, "bwr": 0.70})
 
 # ── Read blast furnace gas fuel input from Fig. 60 ────────────────────────────
 # "Ind mottryck Hyttgaser" = industrial backpressure, blast furnace gas (TWh fuel input).
@@ -124,9 +125,11 @@ for col, key in COL_MAP.items():
     else:
         df[key] = 0.0
 
-df["nuclear"]       = df["nuclear_existing"] + df["nuclear_new"]
-df["solar_pv"]      = df["solar_roof"]       + df["solar_ground"]
-df["hydro_ror"]     = df["hydro"] * hydro_split["run_of_river"]
+df["nuclear"]         = df["nuclear_existing"] + df["nuclear_new"]
+df["nuclear_pwr"]     = df["nuclear"] * nuclear_split["pwr"]
+df["nuclear_bwr"]     = df["nuclear"] * nuclear_split["bwr"]
+df["solar_pv"]        = df["solar_roof"]       + df["solar_ground"]
+df["hydro_ror"]       = df["hydro"] * hydro_split["run_of_river"]
 df["hydro_reservoir"] = df["hydro"] * hydro_split["reservoir"]
 df["net_imports"]   = df["net_imports"].clip(lower=0)
 
@@ -173,7 +176,8 @@ df = df.drop(columns=["_frac"])
 
 # ── Compute shares ────────────────────────────────────────────────────────────
 TECH_COLS = [
-    "hydro_ror", "hydro_reservoir", "nuclear", "wind_onshore", "wind_offshore",
+    "hydro_ror", "hydro_reservoir", "nuclear_pwr", "nuclear_bwr",
+    "wind_onshore", "wind_offshore",
     "solar_pv", "biomass_chp_industrial", "biomass_chp", "waste_chp", "natural_gas",
     "blast_furnace_gas", "net_imports",
 ]
