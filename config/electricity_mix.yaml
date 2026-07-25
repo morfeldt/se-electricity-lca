@@ -230,7 +230,7 @@ scenarios:
 
   lokal_miljohansyn:
     source_name:      "Lokal miljöhänsyn"
-    premise_scenario: "SSP2-PkBudg650"
+    premise_scenario: "SSP1-PkBudg650"
     description: >
       Strong domestic climate ambition. Rapid electrification and renewable
       buildout. Nuclear maintained and extended. Large offshore wind expansion.
@@ -248,6 +248,15 @@ scenarios:
     source_name:      "Regional försörjning"
     premise_scenario: "SSP2-NPi"
     description: >
-      Regional energy self-sufficiency focus. Slower transition pace.
+      Swedish regional energy self-sufficiency focus. Slower transition pace.
       Renewable expansion at current trajectory. No major policy step-change.
+      Source: Energimyndigheten ER 2025:13.
+
+  regional_forsorjning_global_rollback:
+    source_name:      "Regional försörjning"
+    premise_scenario: "SSP3-rollBack"
+    description: >
+      Global rollback of climate policy. Swedish regional energy self-sufficiency focus. 
+      Slower transition pace. Renewable expansion at current trajectory. 
+      No major policy step-change.
       Source: Energimyndigheten ER 2025:13.

@@ -374,9 +374,10 @@ def check_activity_names(
 def build_se_electricity(
     bw2_project: str,
     premise_db_pattern: str,
-    se_scenarios: list[str],
-    premise_scenarios: list[str],
     years: list[int],
+    scenario_mapping: dict[str, str | list[str]] | None = None,
+    se_scenarios: list[str] | None = None,
+    premise_scenarios: list[str] | None = None,
     config_path: str | pathlib.Path | None = None,
     output_path: str | pathlib.Path = "data/outputs/se_electricity_gwp.parquet",
     source_db: str | None = None,
@@ -391,13 +392,22 @@ def build_se_electricity(
     premise_db_pattern:
         f-string pattern for database names. Must contain {pathway} and {year}.
         Example: "ecoinvent-3.10-{pathway}-{year}"
+    years:
+        List of years to calculate (e.g. [2025, 2030, 2035, 2040, 2045, 2050]).
+    scenario_mapping:
+        Dict mapping SE scenario names to premise pathway(s).
+        Each value may be a single string or a list of strings (when you want
+        the same SE electricity mix paired with multiple premise backgrounds).
+        Example: {"lokal_miljohansyn": "SSP1-PkBudg650",
+                  "regional_forsorjning": ["SSP2-NPi", "SSP3-rollBack"]}
+        Mutually exclusive with se_scenarios / premise_scenarios.
     se_scenarios:
         List of SE electricity scenario names from config (e.g. ["high_ambition", "moderate"]).
+        Must be paired positionally with premise_scenarios.
+        Use scenario_mapping instead for a more explicit API.
     premise_scenarios:
         List of premise pathway names (e.g. ["SSP2-PkBudg650", "SSP2-NPi"]).
         Must correspond positionally to se_scenarios.
-    years:
-        List of years to calculate (e.g. [2025, 2030, 2035, 2040, 2045, 2050]).
     config_path:
         Path to electricity_mix.yaml. Defaults to repo config/.
     output_path:
@@ -412,8 +422,22 @@ def build_se_electricity(
     import bw2data
     import bw2calc
 
-    if len(se_scenarios) != len(premise_scenarios):
-        raise ValueError("se_scenarios and premise_scenarios must have the same length.")
+    if scenario_mapping is not None:
+        scenario_pairs: list[tuple[str, str]] = []
+        for se_sc, premise in scenario_mapping.items():
+            if isinstance(premise, str):
+                scenario_pairs.append((se_sc, premise))
+            else:
+                for p in premise:
+                    scenario_pairs.append((se_sc, p))
+    elif se_scenarios is not None and premise_scenarios is not None:
+        if len(se_scenarios) != len(premise_scenarios):
+            raise ValueError("se_scenarios and premise_scenarios must have the same length.")
+        scenario_pairs = list(zip(se_scenarios, premise_scenarios))
+    else:
+        raise ValueError(
+            "Provide either scenario_mapping or both se_scenarios and premise_scenarios."
+        )
 
     cfg = load_config(config_path)
     bw2data.projects.set_current(bw2_project)
@@ -569,8 +593,6 @@ def build_se_electricity(
             rows.append(total_row)
             print(f"  → SE grid GWP100 ({voltage_level} voltage, consumed): {total_with_infra:.5f} kgCO2eq/kWh"
                   f"  [T&D factor={t_d_factor:.4f}, grid infra={grid_infra_gwp:.5f}]")
-
-    scenario_pairs = list(zip(se_scenarios, premise_scenarios))
 
     for se_sc, premise_sc in scenario_pairs:
         for year in years:

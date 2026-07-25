@@ -82,11 +82,27 @@ from se_electricity_lca import build_se_electricity
 df = build_se_electricity(
     bw2_project        = "<your-brightway-project>",
     premise_db_pattern = "ecoinvent-3.10-{pathway}-{year}",
-    se_scenarios       = ["lokal_miljohansyn", "globalt_miljoperspektiv", "regional_forsorjning"],
-    premise_scenarios  = ["SSP2-PkBudg650", "SSP2-PkBudg1000", "SSP2-NPi"],
     years              = [2025, 2030, 2035, 2040, 2045, 2050],
+    scenario_mapping   = {
+        "lokal_miljohansyn":        "SSP1-PkBudg650",
+        "globalt_miljoperspektiv":  "SSP2-PkBudg1000",
+        "regional_forsorjning":     ["SSP2-NPi", "SSP3-rollBack"],  # multiple premise backgrounds
+    },
     source_db          = "ecoinvent-3.10-cutoff",
     historical_years   = [2019, 2020, 2021, 2022, 2023],  # default; set [] to skip
+)
+```
+
+`scenario_mapping` is the recommended approach — it makes the pairing explicit and supports mapping one SE scenario to multiple premise backgrounds. As an alternative, `se_scenarios` and `premise_scenarios` can be passed as positional lists (matched by index):
+
+```python
+df = build_se_electricity(
+    bw2_project        = "<your-brightway-project>",
+    premise_db_pattern = "ecoinvent-3.10-{pathway}-{year}",
+    years              = [2025, 2030, 2035, 2040, 2045, 2050],
+    se_scenarios       = ["lokal_miljohansyn", "globalt_miljoperspektiv", "regional_forsorjning"],
+    premise_scenarios  = ["SSP1-PkBudg650",   "SSP2-PkBudg1000",        "SSP2-NPi"],
+    source_db          = "ecoinvent-3.10-cutoff",
 )
 ```
 
@@ -104,7 +120,7 @@ All scenario definitions, technology–activity mappings, and background scenari
 | `blast_furnace_gas_electrical_efficiency` | `0.26` | Converts Fig. 60 fuel input (TWh) to electricity |
 | `cogeneration_split` | see YAML | Kraftvärme fuel mix by scenario (biomass/waste/gas fractions) |
 
-Edit `premise_scenario` under each SE scenario to change which premise pathway it is paired with. Edit `settings.premise_db_pattern` to point to a different ecoinvent version.
+Edit `premise_scenario` under each SE scenario to change the default pairing used by the CLI. When calling `build_se_electricity()` programmatically, pass `scenario_mapping` instead to override this without touching the YAML. Edit `settings.premise_db_pattern` to point to a different ecoinvent version.
 
 ## Known limitations
 
