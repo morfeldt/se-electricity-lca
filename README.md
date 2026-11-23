@@ -90,6 +90,7 @@ df = build_se_electricity(
     },
     source_db          = "ecoinvent-3.10-cutoff",
     historical_years   = [2019, 2020, 2021, 2022, 2023],  # default; set [] to skip
+    voltage_level      = "medium",                         # optional; default is "low"
 )
 ```
 

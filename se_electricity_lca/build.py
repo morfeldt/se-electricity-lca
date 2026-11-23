@@ -382,6 +382,7 @@ def build_se_electricity(
     output_path: str | pathlib.Path = "data/outputs/se_electricity_gwp.parquet",
     source_db: str | None = None,
     historical_years: list[int] | None = None,
+    voltage_level: str | None = None,
 ) -> pd.DataFrame:
     """Build Sweden-specific prospective electricity GWP intensity table.
 
@@ -412,6 +413,9 @@ def build_se_electricity(
         Path to electricity_mix.yaml. Defaults to repo config/.
     output_path:
         Where to write the parquet output.
+    voltage_level:
+        Output voltage level: 'high', 'medium', or 'low'. Overrides the value
+        in the config file. Defaults to 'low' if not set here or in the config.
 
     Returns
     -------
@@ -440,6 +444,10 @@ def build_se_electricity(
         )
 
     cfg = load_config(config_path)
+    if voltage_level is not None:
+        if voltage_level not in ("high", "medium", "low"):
+            raise ValueError(f"Invalid voltage_level '{voltage_level}'. Must be 'high', 'medium', or 'low'.")
+        cfg.setdefault("settings", {})["voltage_level"] = voltage_level
     bw2data.projects.set_current(bw2_project)
     method_key = _find_lcia_method(bw2data)
     indicator_methods = _find_indicator_methods(bw2data)
