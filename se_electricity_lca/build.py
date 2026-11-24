@@ -323,7 +323,7 @@ def check_activity_names(
     ----------
     bw2_project: brightway2 project name (e.g. "ict-pilot-3.10")
     source_db:   base ecoinvent database name (e.g. "ecoinvent-3.10-cutoff")
-    config_path: path to electricity_mix.yaml (default: repo config/)
+    config_path: path to electricity_mix.yaml (default: bundled config)
     """
     import bw2data
 
@@ -368,7 +368,7 @@ def check_activity_names(
     if all_ok:
         print("All activities found. Safe to run build_se_electricity().")
     else:
-        print("Some activities not found — update config/electricity_mix.yaml before building.")
+        print("Some activities not found — update electricity_mix.yaml before building.")
 
 
 def build_se_electricity(
@@ -410,7 +410,7 @@ def build_se_electricity(
         List of premise pathway names (e.g. ["SSP2-PkBudg650", "SSP2-NPi"]).
         Must correspond positionally to se_scenarios.
     config_path:
-        Path to electricity_mix.yaml. Defaults to repo config/.
+        Path to electricity_mix.yaml. Defaults to the bundled config.
     output_path:
         Where to write the parquet output.
     voltage_level:
@@ -750,7 +750,7 @@ def benchmark_against_ecoinvent(
     ----------
     bw2_project:      brightway2 project name
     source_db:        base ecoinvent database (e.g. "ecoinvent-3.10-cutoff")
-    config_path:      path to electricity_mix.yaml (default: repo config/)
+    config_path:      path to electricity_mix.yaml (default: bundled config)
     benchmark_years:  years to report; defaults to [2015, 2020, 2023]
     """
     import bw2data

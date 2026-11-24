@@ -6,14 +6,22 @@ Computes Sweden-specific prospective electricity GHG intensities (kgCO2eq/kWh), 
 
 ### 1. Input files
 
-**Energimyndigheten scenario data (required before building)**
+**Energimyndigheten scenario data**
 
-Download the scenario data workbook from Energimyndigheten:
+The electricity-mix shares are derived from the Energimyndigheten scenario workbook:
 
 > Scenarier över Sveriges energisystem, ER 2025:13.
 > *Figurunderlag* (Excel workbook).
 
-Place the file at:
+You do **not** need to download this manually. On first use, the package
+downloads the workbook automatically and caches the derived shares table in your
+user cache directory (override the location with the `SE_ELECTRICITY_LCA_CACHE`
+environment variable). Changing the split parameters in the config regenerates
+the cached table automatically.
+
+If you prefer to work fully offline, or want to regenerate the committed
+`data/electricity_mix_shares.csv` from a local copy, download the workbook and
+place it at:
 
 ```
 inputs/figurunderlag-langsiktiga-scenarier-2025.xlsx
@@ -24,9 +32,12 @@ Two tabs are used from this file:
 - **Fig. 17 (K4.3)** — electricity generation by technology (TWh), historical and scenario years
 - **Fig. 60 (A4.1)** — blast furnace gas fuel input to industrial backpressure CHP (TWh), used to derive the blast furnace gas electricity share per scenario
 
-**Build the electricity mix shares (required before building)**
+**Build the electricity mix shares (optional)**
 
-Run the mix builder to generate `data/electricity_mix_shares.csv`:
+This step is only needed if you want to (re)generate the committed
+`data/electricity_mix_shares.csv` locally — e.g. to work offline or to inspect
+the output. Normal use builds and caches it automatically (see above). Requires
+the workbook at `inputs/figurunderlag-langsiktiga-scenarier-2025.xlsx`:
 
 ```bash
 python scripts/build_electricity_mix.py
@@ -109,7 +120,7 @@ df = build_se_electricity(
 
 ## Configuration
 
-All scenario definitions, technology–activity mappings, and background scenario pairings are in `config/electricity_mix.yaml`. Key configurable assumptions:
+All scenario definitions, technology–activity mappings, and background scenario pairings are in `se_electricity_lca/config/electricity_mix.yaml` (bundled with the package). Key configurable assumptions:
 
 | Setting | Default | Description |
 |---|---|---|

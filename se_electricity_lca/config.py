@@ -4,12 +4,14 @@ from __future__ import annotations
 
 import pathlib
 import warnings
+from importlib.resources import files
 from typing import Any
 
 import yaml
 
-DEFAULT_CONFIG     = pathlib.Path(__file__).parent.parent / "config" / "electricity_mix.yaml"
-DEFAULT_SHARES_CSV = pathlib.Path(__file__).parent.parent / "data" / "electricity_mix_shares.csv"
+# electricity_mix.yaml is bundled as package data and resolved against the
+# installed package, so it works in both editable and wheel/git installs.
+DEFAULT_CONFIG = pathlib.Path(files("se_electricity_lca") / "config" / "electricity_mix.yaml")
 
 SHARE_SUM_TOLERANCE = 0.02
 
@@ -25,8 +27,9 @@ def load_config(
     path:
         Path to config YAML. Defaults to config/electricity_mix.yaml.
     shares_csv:
-        Path to shares CSV produced by scripts/fetch_scb_electricity_mix.R.
-        Defaults to data/electricity_mix_shares.csv.
+        Path to a pre-built shares CSV. If omitted, the shares table is built
+        on first use by downloading the Energimyndigheten scenario Excel and
+        caching the result (see se_electricity_lca.shares).
 
     Returns
     -------
@@ -40,12 +43,13 @@ def load_config(
     with open(config_path) as f:
         cfg = yaml.safe_load(f)
 
-    csv_path = pathlib.Path(shares_csv) if shares_csv else DEFAULT_SHARES_CSV
-    if not csv_path.exists():
-        raise FileNotFoundError(
-            f"Shares CSV not found: {csv_path}\n"
-            "Run scripts/fetch_scb_electricity_mix.R to generate it."
-        )
+    if shares_csv:
+        csv_path = pathlib.Path(shares_csv)
+        if not csv_path.exists():
+            raise FileNotFoundError(f"Shares CSV not found: {csv_path}")
+    else:
+        from .shares import ensure_shares_csv
+        csv_path = ensure_shares_csv(cfg)
     _merge_shares_csv(cfg, csv_path)
 
     _validate(cfg)

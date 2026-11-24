@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "se-electricity-lca"
-version = "0.1.0"
+version = "0.2.0"
 description = "Sweden-specific prospective electricity LCA — full LCI reconstruction from technology mix"
 requires-python = ">=3.11"
 dependencies = [
@@ -13,6 +13,9 @@ dependencies = [
     "pyyaml",
     "pyarrow",
     "pandas",
+    "openpyxl",
+    "platformdirs",
+    "certifi",
     "python-dotenv",
 ]
 
@@ -22,3 +25,6 @@ dev = ["ipython", "jupyter"]
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["se_electricity_lca*"]
+
+[tool.setuptools.package-data]
+se_electricity_lca = ["config/*.yaml"]
